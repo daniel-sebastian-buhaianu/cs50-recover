@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 #define BLOCK_SIZE 512
 #define OUTFILE_NAME_LEN 7
@@ -36,6 +37,9 @@ int main(int argc, char *argv[])
 
 	short images_count = -1;
 
+	// Initialise output file pointer
+	FILE *outptr = NULL;
+
 	// Read each block of 512 bytes into buffer
 	while (fread(buffer, sizeof(BYTE), BLOCK_SIZE, inptr) == BLOCK_SIZE)
 	{
@@ -44,6 +48,12 @@ int main(int argc, char *argv[])
 			// check if buffer[3]'s first four bits are 1110 (JPEG signature)
 			if ( (buffer[3] & (1<<5)) && (buffer[3] & (1<<6)) && (buffer[3] & (1<<7)) && !(buffer[3] & (1<<4)) )
 			{
+				// close last .jpg file (if exists)
+				if (outptr != NULL)
+				{
+					fclose(outptr);
+				}
+
 				// found a valid image, increase count
 				images_count++;
 
@@ -51,7 +61,7 @@ int main(int argc, char *argv[])
 				set_filename(images_count, outfile);
 
 				// open output file
-				FILE *outptr = fopen(outfile, "w");
+				outptr = fopen(outfile, "w");
 				if (outptr == NULL)
 				{
 					fclose(inptr);
@@ -59,11 +69,34 @@ int main(int argc, char *argv[])
 					return 3;
 				}
 
-				// write image to output file
+				// write bytes to .jpg file
 				fwrite(buffer, sizeof(BYTE), BLOCK_SIZE, outptr);
-
-				// close output file
-				fclose(outptr);
+			}
+			else
+			{
+				if (outptr != NULL)
+				{
+					// write bytes to .jpg file
+					fwrite(buffer, sizeof(BYTE), BLOCK_SIZE, outptr);
+				}
+				else
+				{
+					// reset to initial value
+					outptr = NULL;
+				}
+			}
+		}
+		else
+		{
+			if (outptr != NULL)
+			{
+				// write bytes to .jpg file
+				fwrite(buffer, sizeof(BYTE), BLOCK_SIZE, outptr);
+			}
+			else
+			{
+				// reset to initial value
+				outptr = NULL;
 			}
 		}
 	}
